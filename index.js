@@ -300,8 +300,8 @@ function endOrMenu() {
   });
 }
 
-function end() {
-  console.log("Thank you for using Employee Tracker!");
-  connection.end();
-  process.exit();
-}
+//function end() {
+  //console.log("Thank you for using Employee Tracker!");
+  //connection.end();
+  //process.exit();
+//}
