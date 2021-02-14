@@ -2,13 +2,14 @@
 var mysql = require("mysql");
 const inquirer = require("inquirer");
 const confirm = require('inquirer-confirm');
+const { functionsIn } = require("lodash");
 
 // MySQL DB Connection Information
 var connection = mysql.createConnection({
   host: "localhost",
   port: 3306,
   user: "root",
-  password: "root",
+  password: "Tahaf103!",
   database: "employees"
 }); 
 
@@ -18,7 +19,13 @@ var showroles;
 var showdepartments;
 var showemployees;
 
+
 // Initiate MySQL Connection.
+
+setupData(); 
+
+function setupData () {
+
 connection.connect(function (err) {
   
   if (err) {
@@ -38,12 +45,16 @@ connection.connect(function (err) {
     showemployees = res.map(emp => ({ name: `${emp.first_name} ${emp.last_name}`, value: emp.id }))
   })
 
-  showmenu();
+  
 })
+}
+
+showmenu();
+
 
 // Show inquirer menu
-function showmenu() {
-  inquirer
+async function showmenu() { 
+  await inquirer
     .prompt(
       {
         type: "list",
@@ -84,9 +95,11 @@ function showmenu() {
           }
         ]
       }).then(function (res) {
-        // console.log(res);
+        console.log(res);
       menu(res.choices)
+  
     })
+    console.log('endoffunction');
 }
 
 function menu(option) {
@@ -166,7 +179,7 @@ function addEmployee() {
         choices: showemployees,
       }
     ]).then(function (response) {
-      // console.log(response)
+       console.log(response)
       addEmployees(response)
     })
 }
