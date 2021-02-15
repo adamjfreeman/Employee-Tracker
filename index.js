@@ -1,307 +1,233 @@
-// Dependencies
-var mysql = require("mysql");
 const inquirer = require("inquirer");
-const confirm = require('inquirer-confirm');
-const { functionsIn } = require("lodash");
+const mysql = require("mysql");
+const cTable = require("console.table");
+const db = require(".");
 
-// MySQL DB Connection Information
-var connection = mysql.createConnection({
+const connection = mysql.createConnection({
   host: "localhost",
+
+  // Your port; if not 3306
   port: 3306,
+
+  // Your username
   user: "root",
+
+  // Your password
   password: "Tahaf103!",
-  database: "employees"
-}); 
+  database: "ee_info_db"
+});
 
-
-
-var showroles;
-var showdepartments;
-var showemployees;
-
-
-// Initiate MySQL Connection.
-
-setupData(); 
-
-function setupData () {
-
-connection.connect(function (err) {
-  
-  if (err) {
-    console.error("error connecting: " + err.stack);
-    return;
-  }
+connection.connect(function(err) {
+  if (err) throw err;
   console.log("connected as id " + connection.threadId);
 
-  connection.query("SELECT * from role", function (error, res) {
-    showroles = res.map(role => ({ name: role.title, value: role.id }))
-  })
-  connection.query("SELECT * from department", function (error, res) {
-    showdepartments = res.map(dep => ({ name: dep.name, value: dep.id }))
-  })
-  connection.query("SELECT * from employee", function (error, res) {
-    // console.log(error, res);
-    showemployees = res.map(emp => ({ name: `${emp.first_name} ${emp.last_name}`, value: emp.id }))
-  })
+  startScreen();
+  //  connection.end();//
+});
 
-  
-})
-}
-
-showmenu();
-
-
-// Show inquirer menu
-async function showmenu() { 
-  await inquirer
-    .prompt(
-      {
-        type: "list",
-        message: "Welcome to Employee Tracker. What would you like to do?",
-        name: "choices",
-        choices: [
-          {
-            name: "View all employees",
-            value: "viewEmployees"
-          },
-          {
-            name: "View all departments",
-            value: "viewDepartments"
-          },
-          {
-            name: "View all roles",
-            value: "viewRoles"
-          },
-          {
-            name: "Add employee",
-            value: "addEmployee"
-          },
-          {
-            name: "Add department",
-            value: "addDept"
-          },
-          {
-            name: "Add role",
-            value: "addRole"
-          },
-          {
-            name: "Update role",
-            value: "updateRole"
-          },
-          {
-            name: "Quit",
-            value: "quit"
-          }
-        ]
-      }).then(function (res) {
-        console.log(res);
-      menu(res.choices)
-  
-    })
-    console.log('endoffunction');
-}
-
-function menu(option) {
-  switch (option) {
-    case "viewEmployees":
-      viewAllEmployees();
-      break;
-    case "viewDepartments":
-      viewAllDepartments();
-      break;
-    case "viewRoles":
-      viewAllRoles();
-      break;
-    case "addEmployee":
-      addEmployee();
-      break;
-    case "addDept":
-      addDept();
-      break;
-    case "addRole":
-      addRole();
-      break;
-    case "updateRole":
-      updateRole();
-      break;
-    case "quit":
-      end();
-  }
-}
-
-function viewAllEmployees() {
-  connection.query("SELECT employee.id, employee.first_name, employee.last_name, role.title, department.name AS department, role.salary, CONCAT(manager.first_name, ' ', manager.last_name) AS manager FROM employee LEFT JOIN role on employee.role_id = role.id LEFT JOIN department on role.department_id = department.id LEFT JOIN employee manager on manager.id = employee.manager_id;", function (error, res) {
-    console.table(res);
-    endOrMenu();
-  })
-}
-
-function viewAllDepartments() {
-  console.log("view all departments")
-  connection.query("SELECT * from department", function (error, res) {
-    console.table(res);
-    endOrMenu();
-  })
-}
-
-function viewAllRoles() {
-  connection.query("SELECT * from role", function (error, res) {
-    console.table(res);
-    endOrMenu();
-  })
-}
-
-// Ask the user for the employee's information.
-function addEmployee() {
+//What the user will first see once logged into node
+function startScreen() {
   inquirer
-    .prompt([
-      {
-        type: 'input',
-        message: "What is the first name?",
-        name: "firstName",
-      },
-      {
-        type: "input",
-        message: "What is the last name?",
-        name: "lastName",
-      },
-      {
-        type: "list",
-        message: "What is the employee's title?",
-        name: "title",
-        choices: showroles
-      },
-      {
-        type: "list",
-        message: "Who is the employee's manager?",
-        name: "manager",
-        choices: showemployees,
+    .prompt({
+      type: "list",
+      choices: [
+        "Add department",
+        "Add role",
+        "Add employee",
+        "View departments",
+        "View roles",
+        "View employees",
+        "Update employee role",
+        "Quit"
+      ],
+      message: "What would you like to do?",
+      name: "option"
+    })
+    .then(function(result) {
+      console.log("You entered: " + result.option);
+
+      switch (result.option) {
+        case "Add department":
+          addDepartment();
+          break;
+        case "Add role":
+          addRole();
+          break;
+        case "Add employee":
+          addEmployee();
+          break;
+        case "View departments":
+          viewDepartment();
+          break;
+        case "View roles":
+          viewRoles();
+          break;
+        case "View employees":
+          viewEmployees();
+          break;
+        case "Update employee role":
+          updateEmployee();
+          break;
+        default:
+          quit();
       }
-    ]).then(function (response) {
-       console.log(response)
-      addEmployees(response)
-    })
+    });
 }
 
-function addEmployees(data) {
 
-  connection.query("INSERT INTO employee SET ?",
-    {
-      first_name: data.firstName,
-      last_name: data.lastName,
-      role_id: data.title,
-      manager_id: data.manager
-    }, function (error, res) {
-      if (error) throw error;
-    })
-    endOrMenu();
-}
+//All of the corresponding functions found below
 
-function addDept() {
-  inquirer
-    .prompt([
-      {
+function addDepartment() {
+
+
+    inquirer.prompt({
+      
         type: "input",
-        message: "What is the name of the new department?",
-        name: "name"
-      }
-    ])
-    .then(function (response) {
-      // console.log(response);
-      addDepartment(response);
+        message: "What is the name of the department?",
+        name: "deptName"
+
+    }).then(function(answer){
+
+
+
+        connection.query("INSERT INTO department (name) VALUES (?)", [answer.deptName] , function(err, res) {
+            if (err) throw err;
+            console.table(res)
+            startScreen()
+    })
     })
 }
 
-function addDepartment(data) {
-  connection.query("INSERT INTO department SET ?", { name: data.name },
-  function (error, res) {
-    // console.log(error, res);
-    if (error) throw error;
-  });
-  endOrMenu();
-}
 
 function addRole() {
   inquirer
     .prompt([
       {
         type: "input",
-        message: "What is the name of the new employee role?",
-        name: "title"
+        message: "What's the name of the role?",
+        name: "roleName"
       },
       {
         type: "input",
-        message: "How much is the salary of the new role?",
-        name: "salary"
+        message: "What is the salary for this role?",
+        name: "salaryTotal"
       },
       {
-        type: "list",
-        message: "In which department is the new role?",
-        name: "id",
-        choices: showdepartments
+        type: "input",
+        message: "What is the department id number?",
+        name: "deptID"
       }
     ])
-    .then(function (response) {
-      // console.log(response);
-      addEmployeeRole(response);
-    })
+    .then(function(answer) {
+
+
+      connection.query("INSERT INTO role (title, salary, department_id) VALUES (?, ?, ?)", [answer.roleName, answer.salaryTotal, answer.deptID], function(err, res) {
+        if (err) throw err;
+        console.table(res);
+        startScreen();
+      });
+    });
 }
 
-function addEmployeeRole(data) {
-  connection.query("INSERT INTO role SET ?", {
-    title: data.title,
-    salary: data.salary,
-    department_id: data.id
-  }, function (error, res) {
-    // console.log(error, res);
-    if (error) throw error;
-  });
-  endOrMenu();
-}
-
-function updateRole() {
+function addEmployee() {
   inquirer
     .prompt([
       {
-        type: "list",
-        message: "For which employee would you like to update the role?",
-        name: "empID",
-        choices: showemployees
+        type: "input",
+        message: "What's the first name of the employee?",
+        name: "eeFirstName"
       },
       {
-        type: "list",
-        message: "What is the employee's new role?",
-        name: "titleID",
-        choices: showroles
+        type: "input",
+        message: "What's the last name of the employee?",
+        name: "eeLastName"
+      },
+      {
+        type: "input",
+        message: "What is the employee's role id number?",
+        name: "roleID"
+      },
+      {
+        type: "input",
+        message: "What is the manager id number?",
+        name: "managerID"
       }
     ])
-    .then(function (response) {
-      // console.log(response);
-      updateEmployeeRole(response);
-    })
+    .then(function(answer) {
+
+      
+      connection.query("INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)", [answer.eeFirstName, answer.eeLastName, answer.roleID, answer.managerID], function(err, res) {
+        if (err) throw err;
+        console.table(res);
+        startScreen();
+      });
+    });
 }
 
-function updateEmployeeRole(data) {
-  connection.query(`UPDATE employee SET role_id = ${data.titleID} WHERE id = ${data.empID}`,
-  function (error, res) {
-    // console.log(error, res);
-    if (error) throw error;
+//Since we're using inquirer, we can pass the query into the method as an array
+
+function updateEmployee() {
+  inquirer
+    .prompt([
+      {
+        type: "input",
+        message: "Which employee would you like to update?",
+        name: "eeUpdate"
+      },
+
+      {
+        type: "input",
+        message: "What do you want to update to?",
+        name: "updateRole"
+      }
+    ])
+    .then(function(answer) {
+      // let query = `INSERT INTO department (name) VALUES ("${answer.deptName}")`
+      //let query = `'UPDATE employee SET role_id=${answer.updateRole} WHERE first_name= ${answer.eeUpdate}`;
+      //console.log(query);
+
+      connection.query('UPDATE employee SET role_id=? WHERE first_name= ?',[answer.updateRole, answer.eeUpdate],function(err, res) {
+        if (err) throw err;
+        console.table(res);
+        startScreen();
+      });
+    });
+}
+
+function viewDepartment() {
+  // select from the db
+  let query = "SELECT * FROM department";
+  connection.query(query, function(err, res) {
+    if (err) throw err;
+    console.table(res);
+    startScreen();
   });
-  endOrMenu();
+  // show the result to the user (console.table)
 }
 
-function endOrMenu() {
-  confirm("Would you like to continue?")
-  .then(function confirmed() {
-    showmenu();
-  }, function cancelled() {
-    end();
+function viewRoles() {
+  // select from the db
+  let query = "SELECT * FROM role";
+  connection.query(query, function(err, res) {
+    if (err) throw err;
+    console.table(res);
+    startScreen();
   });
+  // show the result to the user (console.table)
 }
 
-//function end() {
-  //console.log("Thank you for using Employee Tracker!");
-  //connection.end();
-  //process.exit();
-//}
+function viewEmployees() {
+  // select from the db
+  let query = "SELECT * FROM employee";
+  connection.query(query, function(err, res) {
+    if (err) throw err;
+    console.table(res);
+    startScreen();
+  });
+  // show the result to the user (console.table)
+}
+
+function quit() {
+  connection.end();
+  process.exit();
+}
